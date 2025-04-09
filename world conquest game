@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>World Conquest</title>
+<style>
+  #world-map {
+    display: grid;
+    grid-template-columns: repeat(5, 100px);
+    border: 1px solid black;
+    width: 502px; /* Adjust for borders */
+  }
+  #world-map > div {
+    border: 1px solid gray;
+    text-align: center;
+    padding: 20px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<h1>World Conquest</h1>
+
+<div id="world-map">
+  <div id="region-1">Region 1</div>
+  <div id="region-2">Region 2</div>
+  <div id="region-3">Region 3</div>
+  <div id="region-4">Region 4</div>
+  <div id="region-5">Region 5</div>
+</div>
+
+<p>Turn: <span id="turn-counter">1</span></p>
+<button onclick="nextTurn()">End Turn</button>
+<p id="result"></p>
+
+<script>
+  let turn = 1;
+  let playerTerritories = ['region-1'];
+  let playerColor = 'blue';
+  let aiTerritories = ['region-5'];
+  let aiColor = 'red';
+
+  function updateMap() {
+    const allRegions = ['region-1', 'region-2', 'region-3', 'region-4', 'region-5'];
+    allRegions.forEach(territoryId => {
+      const territory = document.getElementById(territoryId);
+      if (playerTerritories.includes(territoryId)) {
+        territory.style.backgroundColor = playerColor;
+      } else if (aiTerritories.includes(territoryId)) {
+        territory.style.backgroundColor = aiColor;
+      } else {
+        territory.style.backgroundColor = 'lightgray'; // Neutral
+      }
+    });
+  }
+
+  function makeClickable(territoryId) {
+    const territory = document.getElementById(territoryId);
+    territory.addEventListener('click', function() {
+      if (!playerTerritories.includes(territoryId) && !aiTerritories.includes(territoryId)) {
+        // Basic "attack" - instantly take over if adjacent to player territory
+        const adjacentToPlayer = getAdjacent(territoryId).some(adj => playerTerritories.includes(adj));
+        if (adjacentToPlayer) {
+          playerTerritories.push(territoryId);
+          updateMap();
+        } else {
+          document.getElementById('result').textContent = "You can only take adjacent territories!";
+          setTimeout(() => document.getElementById('result').textContent = "", 2000);
+        }
+      }
+    });
+  }
+
+  function getAdjacent(territoryId) {
+    const adjacencyList = {
+      'region-1': ['region-2'],
+      'region-2': ['region-1', 'region-3'],
+      'region-3': ['region-2', 'region-4'],
+      'region-4': ['region-3', 'region-5'],
+      'region-5': ['region-4']
+    };
+    return adjacencyList[territoryId] || [];
+  }
+
+  function aiTurn() {
+    const attackablePlayerTerritories = [];
+    aiTerritories.forEach(aiTerritory => {
+      getAdjacent(aiTerritory).forEach(adjacent => {
+        if (playerTerritories.includes(adjacent) && !attackablePlayerTerritories.includes(adjacent)) {
+          attackablePlayerTerritories.push(adjacent);
+        }
+      });
+    });
+
+    if (attackablePlayerTerritories.length > 0) {
+      const target = attackablePlayerTerritories[Math.floor(Math.random() * attackablePlayerTerritories.length)];
+      playerTerritories = playerTerritories.filter(t => t !== target);
+      aiTerritories.push(target);
+      updateMap();
+    } else {
+      // Try to expand to neutral territories
+      const expandTargets = [];
+      aiTerritories.forEach(aiTerritory => {
+        getAdjacent(aiTerritory).forEach(adjacent => {
+          if (!playerTerritories.includes(adjacent) && !aiTerritories.includes(adjacent) && !expandTargets.includes(adjacent)) {
+            expandTargets.push(adjacent);
+          }
+        });
+      });
+      if (expandTargets.length > 0) {
+        const target = expandTargets[Math.floor(Math.random() * expandTargets.length)];
+        aiTerritories.push(target);
+        updateMap();
+      }
+    }
+  }
+
+  function nextTurn() {
+    turn++;
+    document.getElementById('turn-counter').textContent = turn;
+    aiTurn();
+    // After the AI turn, make newly adjacent neutral territories clickable for the player
+    const newlyClickable = [];
+    playerTerritories.forEach(playerTerritory => {
+      getAdjacent(playerTerritory).forEach(adjacent => {
+        if (!playerTerritories.includes(adjacent) && !aiTerritories.includes(adjacent) && !newlyClickable.includes(adjacent)) {
+          makeClickable(adjacent);
+          newlyClickable.push(adjacent);
+        }
+      });
+    });
+  }
+
+  // Make initial player-adjacent territories clickable
+  getAdjacent('region-1').forEach(makeClickable);
+
+  updateMap();
+</script>
+
+</body>
+</html>
